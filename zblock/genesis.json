@@ -1,0 +1,12 @@
+{
+  "date": "2024-07-10",
+  "chain_id": 1,
+  "trans_per_block": 10,
+  "difficulty": 6,
+  "mining_reward": 700,
+  "gas_price": 15,
+  "balances": {
+    "0xdea7630830603348aa11dc2b73de951396018433": 1000000,
+    "0xdea7630830603348aa11dc2b73de95139601823d": 1000000
+  }
+}
