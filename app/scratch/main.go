@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ardanlabs/blockchain/foundation/blockchain/database"
 	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 )
@@ -21,37 +21,28 @@ func main() {
 }
 
 func run() error {
-	tx := Tx{
-		FromID: "rb",
-		ToId:   "ruby",
-		Value:  10000,
-	}
+
 	// generate a private key from ecdsa file
 	privateKey, err := crypto.LoadECDSA("zblock/accounts/kennedy.ecdsa")
 	if err != nil {
-		return fmt.Errorf("failed to load ecdsa: %w", err)
+		return errors.New("failed to load private key, err: " + err.Error())
 	}
 
-	data, err := json.Marshal(tx)
-	stamp := []byte(fmt.Sprintf("who sign the data%d", len(data)))
+	tx, err := database.NewTx(1, 1,
+		"0xF01813E4B85e178A83e29B8E7bF26BD830a25f32",
+		"0xdd6B972ffcc631a62CAE1BB9d80b7ff429c8ebA4",
+		10000,
+		0,
+		nil)
 	if err != nil {
-		return fmt.Errorf("failed to marshal tx: %w", err)
+		return errors.New("failed to create tx, err: " + err.Error())
 	}
-	data = crypto.Keccak256(stamp, data)
 
-	sig, err := crypto.Sign(data, privateKey)
+	// sign the transaction
+	signedTx, err := tx.Sign(privateKey)
 	if err != nil {
-		return fmt.Errorf("failed to sign tx: %w", err)
+		return errors.New("failed to sign tx, err: " + err.Error())
 	}
-
-	fmt.Println("Signature: ", hexutil.Encode(sig))
-
-	//calculate the public key
-	publicKey, err := crypto.SigToPub(data, sig)
-	if err != nil {
-		return fmt.Errorf("failed to calculate public key: %w", err)
-	}
-	pa := crypto.PubkeyToAddress(*publicKey).Hex()
-	fmt.Println("Public Address: ", pa)
+	fmt.Println("signed tx: ", signedTx)
 	return nil
 }

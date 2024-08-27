@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
 )
@@ -72,4 +73,66 @@ func stamp(value any) ([]byte, error) {
 	data := crypto.Keccak256(stamp, v)
 
 	return data, nil
+}
+
+// VerifySignature validates the signature of the data.
+func VerifySignature(v *big.Int, r *big.Int, s *big.Int) error {
+	// Check the recovery id is 0 or 1.
+	intV := v.Int64() - blkcorID
+	if intV != 0 && intV != 1 {
+		return errors.New("invalid recovery id")
+	}
+
+	// Check if the signature is valid.
+	if !crypto.ValidateSignatureValues(byte(intV), r, s, false) {
+		return errors.New("invalid signature")
+	}
+	return nil
+}
+
+// FromAddress extract the address from the signature.
+func FromAddress(value any, v, r, s *big.Int) (string, error) {
+	// prepare data
+	data, err := stamp(value)
+	if err != nil {
+		return "", err
+	}
+
+	// convert [R|S|V] to 65 byte signature
+	sig := ToSignatureBytes(v, r, s)
+	// capture the public key associate with the data and the signature
+	pk, err := crypto.SigToPub(data, sig)
+	if err != nil {
+		return "", err
+	}
+
+	return crypto.PubkeyToAddress(*pk).Hex(), nil
+}
+
+// ToSignatureBytes converts the [V|R|S] signature into a 65 byte signature.
+func ToSignatureBytes(v, r, s *big.Int) []byte {
+	sig := make([]byte, crypto.SignatureLength)
+
+	rBytes := make([]byte, 32)
+	r.FillBytes(rBytes)
+	copy(sig, rBytes)
+
+	sBytes := make([]byte, 32)
+	s.FillBytes(sBytes)
+	copy(sig[32:], sBytes)
+
+	sig[64] = byte(v.Uint64() - blkcorID)
+	return sig
+}
+
+// ToSignatureBytesWithBlkcorID converts the [V|R|S] signature into a 65 byte signature with adding the blkcorID.
+func ToSignatureBytesWithBlkcorID(v, r, s *big.Int) []byte {
+	sig := ToSignatureBytes(v, r, s)
+	sig[64] = byte(v.Uint64())
+	return sig
+}
+
+// SigString returns the signature as a hex encoded string.
+func SigString(v, r, s *big.Int) string {
+	return hexutil.Encode(ToSignatureBytesWithBlkcorID(v, r, s))
 }

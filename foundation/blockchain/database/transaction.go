@@ -3,6 +3,7 @@ package database
 import (
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"github.com/ardanlabs/blockchain/foundation/blockchain/signature"
 	"math/big"
 )
@@ -60,4 +61,42 @@ type SignedTx struct {
 	R *big.Int `json:"r"` // 签名中的一部分，256bit(64个16进制位)
 	S *big.Int `json:"s"` // 签名中的一部分，256bit，用于确保签名的唯一性和安全性
 	V *big.Int `json:"v"` // 可恢复标志为，用来恢复公钥在以太坊中通常取值 27 或 28（以太坊将 0 和 1 加上了 27，以便与其他系统区分）。
+}
+
+// Validate checks if the transaction is valid.
+func (tx SignedTx) Validate(chainID uint16) error {
+	if chainID != tx.ChainID {
+		return fmt.Errorf("invalid chainID expect [%d], get [%d]", chainID, tx.ChainID)
+	}
+	if !tx.FromID.IsAccountID() {
+		return errors.New("invalid from account ID")
+	}
+	if !tx.ToID.IsAccountID() {
+		return errors.New("invalid to account ID")
+	}
+	if tx.FromID == tx.ToID {
+		return errors.New("you could not transfer to yourself")
+	}
+	if err := signature.VerifySignature(tx.V, tx.R, tx.S); err != nil {
+		return err
+	}
+	address, err := signature.FromAddress(tx.Data, tx.V, tx.R, tx.S)
+	if err != nil {
+		return err
+	}
+	// Check if the from address is the same as the address derived from the signature.
+	if address != string(tx.FromID) {
+		return errors.New("signature address is not match the from address")
+	}
+	return nil
+}
+
+// SignatureString returns the signature string.
+func (tx SignedTx) SignatureString() string {
+	return signature.SigString(tx.V, tx.R, tx.S)
+}
+
+// String returns the string representation of the transaction.
+func (tx Tx) String() string {
+	return fmt.Sprintf("%s:%d", tx.FromID, tx.Nonce)
 }
