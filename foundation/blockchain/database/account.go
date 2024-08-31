@@ -1,6 +1,34 @@
 package database
 
+import "errors"
+
+// Account represents information stored in the database for an individual account.
+type Account struct {
+	AccountID AccountID
+	Nonce     uint64
+	Balance   uint64
+}
+
+func newAccount(accountID AccountID, balance uint64) Account {
+	return Account{
+		AccountID: accountID,
+		Balance:   balance,
+	}
+}
+
+// AccountID represents the unique identifier for an account.
 type AccountID string
+
+// ToAccountID converts a hex-encoded string to an account and validates the
+// hex-encoded string is formatted correctly.
+func ToAccountID(hex string) (AccountID, error) {
+	a := AccountID(hex)
+	if !a.IsAccountID() {
+		return "", errors.New("invalid account format")
+	}
+
+	return a, nil
+}
 
 // IsAccountID verifies whether the underlying data represents a valid
 // hex-encoded account.
