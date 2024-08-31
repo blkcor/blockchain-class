@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// build is the git version of this program. It is set using build flags in the makefile.
+// build is the git version of this program. It is set using build flags in the Makefile.
 var build = "develop"
 
 func main() {

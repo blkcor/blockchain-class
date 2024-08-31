@@ -2,6 +2,7 @@ package signature
 
 import (
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,21 @@ import (
 	"math/big"
 )
 
+// ZeroHash represents a hash code of zeros.
+const ZeroHash = "0x0000000000000000000000000000000000000000000000000000000000000000"
+
+// blkcorID is an arbitrary value used to identify the blkcor blockchain and sign to the message.
 const blkcorID = 27
+
+// Hash return the unique hash string of the value.
+func Hash(value any) string {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return ZeroHash
+	}
+	hash := sha256.Sum256(data)
+	return hexutil.Encode(hash[:])
+}
 
 // Sign signs the data with the given private key.
 func Sign(value any, privateKey *ecdsa.PrivateKey) (v, r, s *big.Int, err error) {

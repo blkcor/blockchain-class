@@ -1,11 +1,14 @@
 package database
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"github.com/ardanlabs/blockchain/foundation/blockchain/signature"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math/big"
+	"time"
 )
 
 // Tx represents a transaction between two accounts.
@@ -99,4 +102,40 @@ func (tx SignedTx) SignatureString() string {
 // String returns the string representation of the transaction.
 func (tx Tx) String() string {
 	return fmt.Sprintf("%s:%d", tx.FromID, tx.Nonce)
+}
+
+// BlockTx represents a transaction in a block that actually
+// will be blocked into the blockchain.
+type BlockTx struct {
+	SignedTx
+	TimeStamp uint64 `json:"timestamp"`
+	GasPrice  uint64 `json:"gas_price"`
+	GasUnit   uint64 `json:"gas_unit"`
+}
+
+// NewBlockTx creates a new block transaction with the given parameters.
+func NewBlockTx(tx SignedTx, gasPrice, gasUnit uint64) BlockTx {
+	return BlockTx{
+		SignedTx:  tx,
+		TimeStamp: uint64(time.Now().UTC().Unix()),
+		GasPrice:  gasPrice,
+		GasUnit:   gasUnit,
+	}
+}
+
+// Hash implement the merkle Hashable interface for providing a hash of the BlockTx.
+func (blockTx *BlockTx) Hash() ([]byte, error) {
+	hash := signature.Hash(blockTx)
+	// remove the 0x prefix
+	return hexutil.Decode(hash[2:])
+}
+
+// Equal implements the merkle Hashable interface for providing the equality
+// check between two BlockTx.If the nonce and the signature are the same, then
+// the two BlockTx are considered equal.
+func (blockTx *BlockTx) Equal(other *BlockTx) bool {
+	sig1 := signature.ToSignatureBytes(blockTx.V, blockTx.R, blockTx.S)
+	sig2 := signature.ToSignatureBytes(other.V, other.R, other.S)
+
+	return blockTx.Nonce == other.Nonce && bytes.Equal(sig1, sig2)
 }
